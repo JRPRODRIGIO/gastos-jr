@@ -77,7 +77,6 @@ export default function App() {
   const [filtroMes, setFiltroMes] = useState("todos");
   const [toast, setToast]     = useState(null);
 
-  // Guardar en localStorage cada vez que cambien los gastos
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(gastos));
   }, [gastos]);
@@ -124,45 +123,50 @@ export default function App() {
   const topGasto = gastosFiltrados.reduce((max,g)=>g.monto>(max?.monto||0)?g:max, null);
 
   const NAV = [
-    { key:"dashboard", label:"📊 Dashboard" },
-    { key:"agregar",   label:"➕ Agregar"   },
-    { key:"historial", label:"📋 Historial" },
+    { key:"dashboard", label:"Dashboard", emoji:"📊" },
+    { key:"agregar",   label:"Agregar",   emoji:"➕" },
+    { key:"historial", label:"Historial", emoji:"📋" },
   ];
 
   return (
     <div style={{ minHeight:"100vh", background:"#0d0d1a", color:"#e2e8f0", fontFamily:"'DM Sans','Segoe UI',sans-serif" }}>
+
+      {/* Toast */}
       {toast && (
         <div style={{ position:"fixed",top:20,right:20,zIndex:999,background:"#1e1e3a",border:"1px solid #3b3b6b",borderRadius:10,padding:"12px 20px",fontSize:14,boxShadow:"0 8px 32px rgba(0,0,0,.4)" }}>
           {toast}
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ background:"#11112a", borderBottom:"1px solid #1e1e3a", padding:"16px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+      {/* ── HEADER ── */}
+      <div className="header-wrap" style={{ background:"#11112a", borderBottom:"1px solid #1e1e3a", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <div style={{ background:"linear-gradient(135deg,#3b82f6,#a855f7)", borderRadius:12, width:42, height:42, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>💳</div>
+          <div style={{ background:"linear-gradient(135deg,#3b82f6,#a855f7)", borderRadius:12, width:42, height:42, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, flexShrink:0 }}>💳</div>
           <div>
             <div style={{ fontWeight:800, fontSize:20, letterSpacing:"-0.5px" }}>Gastos <span style={{ color:"#3b82f6" }}>JR</span></div>
             <div style={{ fontSize:11, color:"#64748b" }}>Control financiero personal · 2026</div>
           </div>
         </div>
-        <div style={{ display:"flex", gap:8 }}>
+        {/* Nav en desktop */}
+        <div className="header-nav" style={{ display:"flex", gap:8 }}>
           {NAV.map(n => (
             <button key={n.key} onClick={()=>setVista(n.key)} style={{
               background: vista===n.key ? "linear-gradient(135deg,#3b82f6,#a855f7)" : "#1a1a2e",
               color: vista===n.key ? "#fff" : "#64748b",
               border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:13
-            }}>{n.label}</button>
+            }}>{n.emoji} {n.label}</button>
           ))}
         </div>
       </div>
 
-      <div style={{ maxWidth:1100, margin:"0 auto", padding:"24px 16px" }}>
+      {/* ── CONTENIDO ── */}
+      <div className="content-wrap" style={{ maxWidth:1100, margin:"0 auto", padding:"24px 16px" }}>
 
         {/* ── DASHBOARD ── */}
         {vista==="dashboard" && (
           <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-            {/* Filtro */}
+
+            {/* Filtro mes */}
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <span style={{ color:"#64748b", fontSize:13 }}>Mes:</span>
               <select value={filtroMes} onChange={e=>setFiltroMes(e.target.value)} style={{ background:"#1a1a2e",color:"#e2e8f0",border:"1px solid #2d2d4e",borderRadius:8,padding:"6px 12px",fontSize:13 }}>
@@ -171,31 +175,32 @@ export default function App() {
               </select>
             </div>
 
-            {/* KPIs */}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:14 }}>
+            {/* KPIs — 2 cols en móvil, 4 en desktop */}
+            <div className="kpi-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14 }}>
               {[
-                { label:"Total gastado",    value:formatMXN(total),                                          icon:"💸", color:"#3b82f6" },
-                { label:"Núm. de gastos",   value:gastosFiltrados.length,                                    icon:"📝", color:"#a855f7" },
-                { label:"Categoría top",    value:porCategoria[0]?`${porCategoria[0].emoji} ${porCategoria[0].name}`:"—", icon:"🏆", color:"#f97316" },
-                { label:"Gasto más alto",   value:topGasto?formatMXN(topGasto.monto):"—",                   icon:"📈", color:"#22c55e" },
+                { label:"Total gastado",  value:formatMXN(total),                                                          icon:"💸", color:"#3b82f6" },
+                { label:"Núm. de gastos", value:gastosFiltrados.length,                                                    icon:"📝", color:"#a855f7" },
+                { label:"Categoría top",  value:porCategoria[0]?`${porCategoria[0].emoji} ${porCategoria[0].name}`:"—",    icon:"🏆", color:"#f97316" },
+                { label:"Gasto más alto", value:topGasto?formatMXN(topGasto.monto):"—",                                   icon:"📈", color:"#22c55e" },
               ].map((k,i)=>(
-                <div key={i} style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px" }}>
-                  <div style={{ fontSize:26,marginBottom:8 }}>{k.icon}</div>
-                  <div style={{ fontSize:22,fontWeight:800,color:k.color }}>{k.value}</div>
-                  <div style={{ fontSize:12,color:"#64748b",marginTop:4 }}>{k.label}</div>
+                <div key={i} style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"16px" }}>
+                  <div style={{ fontSize:24,marginBottom:6 }}>{k.icon}</div>
+                  <div className="kpi-value" style={{ fontSize:20,fontWeight:800,color:k.color,wordBreak:"break-word" }}>{k.value}</div>
+                  <div style={{ fontSize:11,color:"#64748b",marginTop:4 }}>{k.label}</div>
                 </div>
               ))}
             </div>
 
-            {/* Gráficas row 1 */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+            {/* Gráficas fila 1 — side by side en desktop, apiladas en móvil */}
+            <div className="chart-row-1" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+
               {/* Barras por mes */}
-              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px" }}>
+              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px",minWidth:0 }}>
                 <div style={{ fontWeight:700,marginBottom:16,fontSize:14 }}>📅 Gasto por mes</div>
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={porMes} barSize={32}>
-                    <XAxis dataKey="mes" tick={{fill:"#64748b",fontSize:12}} axisLine={false} tickLine={false}/>
-                    <YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>`$${(v/1000).toFixed(0)}k`}/>
+                  <BarChart data={porMes} barSize={28} margin={{left:0,right:8,top:4,bottom:0}}>
+                    <XAxis dataKey="mes" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/>
+                    <YAxis tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`$${(v/1000).toFixed(0)}k`} width={36}/>
                     <Tooltip content={<CustomTooltip/>} cursor={{fill:"rgba(59,130,246,.06)"}}/>
                     <Bar dataKey="total" radius={[6,6,0,0]}>
                       {porMes.map((_,i)=><Cell key={i} fill={i===porMes.length-1?"#3b82f6":"#2d2d4e"}/>)}
@@ -205,23 +210,25 @@ export default function App() {
               </div>
 
               {/* Pie categorías */}
-              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px" }}>
+              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px",minWidth:0 }}>
                 <div style={{ fontWeight:700,marginBottom:16,fontSize:14 }}>🥧 Por categoría</div>
-                <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                  <ResponsiveContainer width="50%" height={200}>
-                    <PieChart>
-                      <Pie data={porCategoria} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={0}>
-                        {porCategoria.map((c,i)=><Cell key={i} fill={c.color}/>)}
-                      </Pie>
-                      <Tooltip formatter={v=>formatMXN(v)}/>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div style={{ flex:1,display:"flex",flexDirection:"column",gap:7 }}>
+                <div className="pie-layout" style={{ display:"flex",alignItems:"center",gap:8 }}>
+                  <div className="pie-chart-wrap" style={{ width:"50%",flexShrink:0 }}>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <PieChart>
+                        <Pie data={porCategoria} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" strokeWidth={0}>
+                          {porCategoria.map((c,i)=><Cell key={i} fill={c.color}/>)}
+                        </Pie>
+                        <Tooltip formatter={v=>formatMXN(v)}/>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div style={{ flex:1,display:"flex",flexDirection:"column",gap:7,minWidth:0 }}>
                     {porCategoria.map((c,i)=>(
                       <div key={i} style={{ display:"flex",alignItems:"center",gap:6 }}>
-                        <div style={{ width:9,height:9,borderRadius:"50%",background:c.color,flexShrink:0 }}/>
+                        <div style={{ width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0 }}/>
                         <span style={{ fontSize:11,color:"#94a3b8",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{c.emoji} {c.name}</span>
-                        <span style={{ fontSize:11,fontWeight:700 }}>{formatMXN(c.value)}</span>
+                        <span style={{ fontSize:11,fontWeight:700,flexShrink:0 }}>{formatMXN(c.value)}</span>
                       </div>
                     ))}
                   </div>
@@ -229,28 +236,29 @@ export default function App() {
               </div>
             </div>
 
-            {/* Gráficas row 2 */}
-            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:16 }}>
+            {/* Gráficas fila 2 */}
+            <div className="chart-row-2" style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:16 }}>
+
               {/* Línea tendencia */}
-              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px" }}>
+              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px",minWidth:0 }}>
                 <div style={{ fontWeight:700,marginBottom:16,fontSize:14 }}>📈 Tendencia mensual</div>
                 <ResponsiveContainer width="100%" height={180}>
-                  <LineChart data={porMes}>
+                  <LineChart data={porMes} margin={{left:0,right:8,top:4,bottom:0}}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a"/>
-                    <XAxis dataKey="mes" tick={{fill:"#64748b",fontSize:12}} axisLine={false} tickLine={false}/>
-                    <YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>`$${(v/1000).toFixed(0)}k`}/>
+                    <XAxis dataKey="mes" tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false}/>
+                    <YAxis tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false} tickFormatter={v=>`$${(v/1000).toFixed(0)}k`} width={36}/>
                     <Tooltip content={<CustomTooltip/>}/>
-                    <Line type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={2.5} dot={{fill:"#3b82f6",r:5}} activeDot={{r:7}}/>
+                    <Line type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={2.5} dot={{fill:"#3b82f6",r:4}} activeDot={{r:6}}/>
                   </LineChart>
                 </ResponsiveContainer>
               </div>
 
               {/* Pie método de pago */}
-              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px" }}>
+              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px",minWidth:0 }}>
                 <div style={{ fontWeight:700,marginBottom:16,fontSize:14 }}>💳 Método de pago</div>
-                <ResponsiveContainer width="100%" height={140}>
+                <ResponsiveContainer width="100%" height={130}>
                   <PieChart>
-                    <Pie data={porMetodo} cx="50%" cy="50%" outerRadius={60} dataKey="value" strokeWidth={0}>
+                    <Pie data={porMetodo} cx="50%" cy="50%" outerRadius={55} dataKey="value" strokeWidth={0}>
                       {porMetodo.map((c,i)=><Cell key={i} fill={c.color}/>)}
                     </Pie>
                     <Tooltip formatter={v=>formatMXN(v)}/>
@@ -259,7 +267,7 @@ export default function App() {
                 <div style={{ display:"flex",flexDirection:"column",gap:6,marginTop:8 }}>
                   {porMetodo.map((m,i)=>(
                     <div key={i} style={{ display:"flex",alignItems:"center",gap:6 }}>
-                      <div style={{ width:9,height:9,borderRadius:"50%",background:m.color,flexShrink:0 }}/>
+                      <div style={{ width:8,height:8,borderRadius:"50%",background:m.color,flexShrink:0 }}/>
                       <span style={{ fontSize:11,color:"#94a3b8",flex:1 }}>{m.name}</span>
                       <span style={{ fontSize:11,fontWeight:700 }}>{formatMXN(m.value)}</span>
                     </div>
@@ -273,7 +281,7 @@ export default function App() {
         {/* ── AGREGAR ── */}
         {vista==="agregar" && (
           <div style={{ maxWidth:500,margin:"0 auto" }}>
-            <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:16,padding:"28px" }}>
+            <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:16,padding:"24px" }}>
               <div style={{ fontWeight:800,fontSize:20,marginBottom:6 }}>➕ Registrar gasto</div>
               <div style={{ color:"#64748b",fontSize:13,marginBottom:24 }}>Agrega un nuevo gasto a tu registro</div>
 
@@ -286,7 +294,7 @@ export default function App() {
                   <label style={{ display:"block",fontSize:13,color:"#94a3b8",marginBottom:6,fontWeight:600 }}>{f.label}</label>
                   <input type={f.type} placeholder={f.ph} value={form[f.key]}
                     onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))}
-                    style={{ width:"100%",background:"#0d0d1a",border:"1px solid #2d2d4e",borderRadius:10,padding:"12px 14px",color:"#e2e8f0",fontSize:14,outline:"none",boxSizing:"border-box" }}
+                    style={{ width:"100%",background:"#0d0d1a",border:"1px solid #2d2d4e",borderRadius:10,padding:"14px",color:"#e2e8f0",fontSize:16,outline:"none",boxSizing:"border-box" }}
                   />
                 </div>
               ))}
@@ -302,10 +310,10 @@ export default function App() {
                     return (
                       <button key={m} onClick={()=>setForm(p=>({...p,metodo:m}))} style={{
                         flex:1,background:sel?`${color}33`:"#1a1a2e",
-                        border:`1px solid ${sel?color:"#2d2d4e"}`,borderRadius:10,padding:"10px 4px",cursor:"pointer",
-                        display:"flex",flexDirection:"column",alignItems:"center",gap:4
+                        border:`1px solid ${sel?color:"#2d2d4e"}`,borderRadius:10,padding:"12px 4px",cursor:"pointer",
+                        display:"flex",flexDirection:"column",alignItems:"center",gap:4,minHeight:64
                       }}>
-                        <span style={{ fontSize:20 }}>{icon}</span>
+                        <span style={{ fontSize:22 }}>{icon}</span>
                         <span style={{ fontSize:11,color:sel?color:"#64748b",fontWeight:600 }}>{m}</span>
                       </button>
                     );
@@ -323,10 +331,10 @@ export default function App() {
                       <button key={cat.nombre} onClick={()=>setForm(p=>({...p,categoria:cat.nombre}))} style={{
                         background:sel?`${cat.color}33`:"#1a1a2e",
                         border:`1px solid ${sel?cat.color:"#2d2d4e"}`,borderRadius:10,padding:"10px 4px",cursor:"pointer",
-                        display:"flex",flexDirection:"column",alignItems:"center",gap:4
+                        display:"flex",flexDirection:"column",alignItems:"center",gap:4,minHeight:60
                       }}>
                         <span style={{ fontSize:20 }}>{cat.emoji}</span>
-                        <span style={{ fontSize:10,color:sel?cat.color:"#64748b",fontWeight:600,textAlign:"center" }}>{cat.nombre}</span>
+                        <span style={{ fontSize:10,color:sel?cat.color:"#64748b",fontWeight:600,textAlign:"center",lineHeight:1.2 }}>{cat.nombre}</span>
                       </button>
                     );
                   })}
@@ -335,7 +343,7 @@ export default function App() {
 
               <button onClick={agregarGasto} style={{
                 width:"100%",background:"linear-gradient(135deg,#3b82f6,#a855f7)",
-                border:"none",borderRadius:12,padding:"14px",color:"#fff",fontWeight:800,fontSize:16,cursor:"pointer"
+                border:"none",borderRadius:12,padding:"16px",color:"#fff",fontWeight:800,fontSize:16,cursor:"pointer"
               }}>Guardar Gasto</button>
             </div>
           </div>
@@ -365,22 +373,22 @@ export default function App() {
               {gastosFiltrados.map(g=>{
                 const cat=CATEGORIAS.find(c=>c.nombre===g.categoria);
                 return (
-                  <div key={g.id} style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:12,padding:"14px 18px",display:"flex",alignItems:"center",gap:14 }}>
-                    <div style={{ width:44,height:44,borderRadius:12,flexShrink:0,background:`${cat?.color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22 }}>
+                  <div key={g.id} style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:12 }}>
+                    <div style={{ width:42,height:42,borderRadius:12,flexShrink:0,background:`${cat?.color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20 }}>
                       {cat?.emoji}
                     </div>
                     <div style={{ flex:1,minWidth:0 }}>
-                      <div style={{ fontWeight:700,fontSize:14 }}>{g.descripcion}</div>
-                      <div style={{ fontSize:12,color:"#64748b",marginTop:3,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
+                      <div style={{ fontWeight:700,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{g.descripcion}</div>
+                      <div style={{ fontSize:12,color:"#64748b",marginTop:3,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap" }}>
                         <span>{g.categoria}</span>
                         <span>·</span>
-                        <span>{new Date(g.fecha+"T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short",year:"numeric"})}</span>
+                        <span>{new Date(g.fecha+"T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short"})}</span>
                         <span>·</span>
                         <MetodoBadge metodo={g.metodo}/>
                       </div>
                     </div>
-                    <div style={{ fontWeight:800,fontSize:16,color:cat?.color }}>{formatMXN(g.monto)}</div>
-                    <button onClick={()=>eliminarGasto(g.id)} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,padding:4,borderRadius:6 }} title="Eliminar">🗑️</button>
+                    <div style={{ fontWeight:800,fontSize:15,color:cat?.color,flexShrink:0 }}>{formatMXN(g.monto)}</div>
+                    <button onClick={()=>eliminarGasto(g.id)} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,padding:6,borderRadius:6,flexShrink:0 }} title="Eliminar">🗑️</button>
                   </div>
                 );
               })}
@@ -396,12 +404,100 @@ export default function App() {
         )}
       </div>
 
+      {/* ── NAV INFERIOR (solo móvil) ── */}
+      <nav className="bottom-nav">
+        {NAV.map(n => (
+          <button key={n.key} onClick={()=>setVista(n.key)} className={`bottom-nav-btn${vista===n.key?" active":""}`}>
+            <span style={{ fontSize:22 }}>{n.emoji}</span>
+            <span style={{ fontSize:10, fontWeight:700 }}>{n.label}</span>
+          </button>
+        ))}
+      </nav>
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap');
-        * { box-sizing:border-box; }
-        input[type=date]::-webkit-calendar-picker-indicator { filter:invert(.4); }
-        select option { background:#1a1a2e; }
-        ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:#0d0d1a} ::-webkit-scrollbar-thumb{background:#2d2d4e;border-radius:4px}
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #0d0d1a; }
+        input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.4); }
+        select option { background: #1a1a2e; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0d0d1a; }
+        ::-webkit-scrollbar-thumb { background: #2d2d4e; border-radius: 4px; }
+
+        /* Safe area + header */
+        .header-wrap {
+          padding: calc(16px + env(safe-area-inset-top)) 24px 16px;
+        }
+
+        /* Bottom nav — oculta en desktop */
+        .bottom-nav {
+          display: none;
+          position: fixed;
+          bottom: 0; left: 0; right: 0;
+          background: #11112a;
+          border-top: 1px solid #1e1e3a;
+          padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+          z-index: 100;
+          justify-content: space-around;
+          align-items: center;
+        }
+        .bottom-nav-btn {
+          flex: 1;
+          background: none;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 3px;
+          padding: 6px 0;
+          color: #64748b;
+          min-height: 52px;
+          justify-content: center;
+        }
+        .bottom-nav-btn.active {
+          color: #3b82f6;
+        }
+        .bottom-nav-btn.active span:first-child {
+          filter: drop-shadow(0 0 6px #3b82f680);
+        }
+
+        /* ── RESPONSIVE MÓVIL (≤ 640px) ── */
+        @media (max-width: 640px) {
+          /* Ocultar nav del header, mostrar bottom nav */
+          .header-nav { display: none !important; }
+          .bottom-nav { display: flex !important; }
+
+          /* Padding inferior del contenido para no quedar bajo el bottom nav */
+          .content-wrap {
+            padding: 16px 12px calc(80px + env(safe-area-inset-bottom)) !important;
+          }
+
+          /* KPIs: 2 columnas */
+          .kpi-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .kpi-value {
+            font-size: 16px !important;
+          }
+
+          /* Gráficas: una columna */
+          .chart-row-1 {
+            grid-template-columns: 1fr !important;
+          }
+          .chart-row-2 {
+            grid-template-columns: 1fr !important;
+          }
+
+          /* Pie categorías: pie encima, leyenda abajo */
+          .pie-layout {
+            flex-direction: column !important;
+            align-items: center !important;
+          }
+          .pie-chart-wrap {
+            width: 100% !important;
+          }
+        }
       `}</style>
     </div>
   );
