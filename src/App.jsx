@@ -1,0 +1,408 @@
+import { useState, useMemo, useEffect } from "react";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line, CartesianGrid
+} from "recharts";
+
+const CATEGORIAS = [
+  { nombre: "Viajes",          emoji: "✈️",  color: "#3B82F6" },
+  { nombre: "Comida",          emoji: "🍽️",  color: "#F97316" },
+  { nombre: "Entretenimiento", emoji: "🎉",  color: "#A855F7" },
+  { nombre: "Salud/Fitness",   emoji: "💪",  color: "#22C55E" },
+  { nombre: "Supermercado",    emoji: "🛒",  color: "#EAB308" },
+  { nombre: "Suscripciones",   emoji: "📱",  color: "#06B6D4" },
+  { nombre: "Transporte",      emoji: "🚗",  color: "#EC4899" },
+  { nombre: "Otros",           emoji: "📦",  color: "#94A3B8" },
+];
+
+const METODOS = ["Tarjeta", "Efectivo", "Transferencia"];
+const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+const gastosSeed = [
+  { id:1,  descripcion:"Vuelo a Vail",                    monto:10000, categoria:"Viajes",          metodo:"Tarjeta",      fecha:"2026-01-02" },
+  { id:2,  descripcion:"Electrolit gym",                  monto:50,    categoria:"Salud/Fitness",   metodo:"Tarjeta",      fecha:"2026-01-03" },
+  { id:3,  descripcion:"Restaurante Kai Cancún",          monto:1870,  categoria:"Comida",           metodo:"Tarjeta",      fecha:"2026-01-29" },
+  { id:4,  descripcion:"ChatGPT",                         monto:355,   categoria:"Suscripciones",   metodo:"Tarjeta",      fecha:"2026-02-04" },
+  { id:5,  descripcion:"Coursera",                        monto:670,   categoria:"Suscripciones",   metodo:"Tarjeta",      fecha:"2026-02-10" },
+  { id:6,  descripcion:"Strana Antro",                    monto:2700,  categoria:"Entretenimiento", metodo:"Transferencia",fecha:"2026-02-27" },
+  { id:7,  descripcion:"Gasolina",                        monto:1750,  categoria:"Transporte",      metodo:"Efectivo",     fecha:"2026-03-01" },
+  { id:8,  descripcion:"Suscripción OpenAI ChatGPT",      monto:356,   categoria:"Suscripciones",   metodo:"Tarjeta",      fecha:"2026-03-03" },
+  { id:9,  descripcion:"Matcha",                          monto:30,    categoria:"Comida",           metodo:"Tarjeta",      fecha:"2026-03-05" },
+  { id:10, descripcion:"Yogurt Zozen",                    monto:220,   categoria:"Supermercado",    metodo:"Efectivo",     fecha:"2026-03-06" },
+  { id:11, descripcion:"Cena con Raquel en Abisal",       monto:1000,  categoria:"Comida",           metodo:"Efectivo",     fecha:"2026-03-06" },
+  { id:12, descripcion:"Litros de tequila en el estadio", monto:300,   categoria:"Entretenimiento", metodo:"Efectivo",     fecha:"2026-03-07" },
+  { id:13, descripcion:"Cover Toto",                      monto:250,   categoria:"Entretenimiento", metodo:"Efectivo",     fecha:"2026-03-07" },
+  { id:14, descripcion:"Mesa Toto Antro",                 monto:1950,  categoria:"Entretenimiento", metodo:"Transferencia",fecha:"2026-03-07" },
+];
+
+const STORAGE_KEY = "gastos-jr-data";
+
+function cargarGastos() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return gastosSeed;
+}
+
+const formatMXN = (n) =>
+  new Intl.NumberFormat("es-MX", { style:"currency", currency:"MXN", minimumFractionDigits:0 }).format(n);
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload?.length) {
+    return (
+      <div style={{ background:"#1a1a2e", border:"1px solid #2d2d4e", borderRadius:8, padding:"10px 14px" }}>
+        <p style={{ color:"#94a3b8", fontSize:12, margin:"0 0 4px" }}>{label}</p>
+        <p style={{ color:"#f97316", fontWeight:700, margin:0, fontSize:14 }}>{formatMXN(payload[0].value)}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const MetodoBadge = ({ metodo }) => {
+  const cfg = { Tarjeta:["#3b82f6","💳"], Efectivo:["#22c55e","💵"], Transferencia:["#a855f7","🔄"] };
+  const [color, icon] = cfg[metodo] || ["#94a3b8","💰"];
+  return (
+    <span style={{ background:`${color}22`, color, fontSize:11, fontWeight:700, borderRadius:6, padding:"2px 8px", whiteSpace:"nowrap" }}>
+      {icon} {metodo}
+    </span>
+  );
+};
+
+export default function App() {
+  const [gastos, setGastos]   = useState(cargarGastos);
+  const [vista, setVista]     = useState("dashboard");
+  const [form, setForm]       = useState({ descripcion:"", monto:"", categoria:"Comida", metodo:"Tarjeta", fecha: new Date().toISOString().split("T")[0] });
+  const [filtroMes, setFiltroMes] = useState("todos");
+  const [toast, setToast]     = useState(null);
+
+  // Guardar en localStorage cada vez que cambien los gastos
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(gastos));
+  }, [gastos]);
+
+  const mostrarToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
+
+  const agregarGasto = () => {
+    if (!form.descripcion || !form.monto || isNaN(Number(form.monto))) return;
+    setGastos(prev => [{ ...form, monto: Number(form.monto), id: Date.now() }, ...prev]);
+    setForm({ descripcion:"", monto:"", categoria:"Comida", metodo:"Tarjeta", fecha: new Date().toISOString().split("T")[0] });
+    mostrarToast("✅ Gasto registrado");
+  };
+
+  const eliminarGasto = (id) => { setGastos(prev => prev.filter(g => g.id !== id)); mostrarToast("🗑️ Gasto eliminado"); };
+
+  const gastosFiltrados = useMemo(() =>
+    filtroMes === "todos" ? gastos : gastos.filter(g => new Date(g.fecha).getMonth() === Number(filtroMes)),
+    [gastos, filtroMes]
+  );
+
+  const total = gastosFiltrados.reduce((s,g) => s+g.monto, 0);
+
+  const porMes = useMemo(() => {
+    const mapa = {};
+    gastos.forEach(g => { const m = new Date(g.fecha).getMonth(); mapa[m] = (mapa[m]||0)+g.monto; });
+    return Object.entries(mapa).sort((a,b)=>a[0]-b[0]).map(([m,t])=>({ mes:MESES[m], total:t }));
+  }, [gastos]);
+
+  const porCategoria = useMemo(() => {
+    const mapa = {};
+    gastosFiltrados.forEach(g => { mapa[g.categoria] = (mapa[g.categoria]||0)+g.monto; });
+    return Object.entries(mapa)
+      .map(([cat,val]) => { const c = CATEGORIAS.find(x=>x.nombre===cat); return { name:cat, value:val, color:c?.color||"#94a3b8", emoji:c?.emoji||"📦" }; })
+      .sort((a,b)=>b.value-a.value);
+  }, [gastosFiltrados]);
+
+  const porMetodo = useMemo(() => {
+    const mapa = {};
+    gastosFiltrados.forEach(g => { mapa[g.metodo] = (mapa[g.metodo]||0)+g.monto; });
+    const colores = { Tarjeta:"#3b82f6", Efectivo:"#22c55e", Transferencia:"#a855f7" };
+    return Object.entries(mapa).map(([m,v])=>({ name:m, value:v, color:colores[m]||"#94a3b8" }));
+  }, [gastosFiltrados]);
+
+  const topGasto = gastosFiltrados.reduce((max,g)=>g.monto>(max?.monto||0)?g:max, null);
+
+  const NAV = [
+    { key:"dashboard", label:"📊 Dashboard" },
+    { key:"agregar",   label:"➕ Agregar"   },
+    { key:"historial", label:"📋 Historial" },
+  ];
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#0d0d1a", color:"#e2e8f0", fontFamily:"'DM Sans','Segoe UI',sans-serif" }}>
+      {toast && (
+        <div style={{ position:"fixed",top:20,right:20,zIndex:999,background:"#1e1e3a",border:"1px solid #3b3b6b",borderRadius:10,padding:"12px 20px",fontSize:14,boxShadow:"0 8px 32px rgba(0,0,0,.4)" }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ background:"#11112a", borderBottom:"1px solid #1e1e3a", padding:"16px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ background:"linear-gradient(135deg,#3b82f6,#a855f7)", borderRadius:12, width:42, height:42, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>💳</div>
+          <div>
+            <div style={{ fontWeight:800, fontSize:20, letterSpacing:"-0.5px" }}>Gastos <span style={{ color:"#3b82f6" }}>JR</span></div>
+            <div style={{ fontSize:11, color:"#64748b" }}>Control financiero personal · 2026</div>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          {NAV.map(n => (
+            <button key={n.key} onClick={()=>setVista(n.key)} style={{
+              background: vista===n.key ? "linear-gradient(135deg,#3b82f6,#a855f7)" : "#1a1a2e",
+              color: vista===n.key ? "#fff" : "#64748b",
+              border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:13
+            }}>{n.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ maxWidth:1100, margin:"0 auto", padding:"24px 16px" }}>
+
+        {/* ── DASHBOARD ── */}
+        {vista==="dashboard" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+            {/* Filtro */}
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ color:"#64748b", fontSize:13 }}>Mes:</span>
+              <select value={filtroMes} onChange={e=>setFiltroMes(e.target.value)} style={{ background:"#1a1a2e",color:"#e2e8f0",border:"1px solid #2d2d4e",borderRadius:8,padding:"6px 12px",fontSize:13 }}>
+                <option value="todos">Todos</option>
+                {MESES.map((m,i)=><option key={i} value={i}>{m}</option>)}
+              </select>
+            </div>
+
+            {/* KPIs */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:14 }}>
+              {[
+                { label:"Total gastado",    value:formatMXN(total),                                          icon:"💸", color:"#3b82f6" },
+                { label:"Núm. de gastos",   value:gastosFiltrados.length,                                    icon:"📝", color:"#a855f7" },
+                { label:"Categoría top",    value:porCategoria[0]?`${porCategoria[0].emoji} ${porCategoria[0].name}`:"—", icon:"🏆", color:"#f97316" },
+                { label:"Gasto más alto",   value:topGasto?formatMXN(topGasto.monto):"—",                   icon:"📈", color:"#22c55e" },
+              ].map((k,i)=>(
+                <div key={i} style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px" }}>
+                  <div style={{ fontSize:26,marginBottom:8 }}>{k.icon}</div>
+                  <div style={{ fontSize:22,fontWeight:800,color:k.color }}>{k.value}</div>
+                  <div style={{ fontSize:12,color:"#64748b",marginTop:4 }}>{k.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Gráficas row 1 */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+              {/* Barras por mes */}
+              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px" }}>
+                <div style={{ fontWeight:700,marginBottom:16,fontSize:14 }}>📅 Gasto por mes</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={porMes} barSize={32}>
+                    <XAxis dataKey="mes" tick={{fill:"#64748b",fontSize:12}} axisLine={false} tickLine={false}/>
+                    <YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>`$${(v/1000).toFixed(0)}k`}/>
+                    <Tooltip content={<CustomTooltip/>} cursor={{fill:"rgba(59,130,246,.06)"}}/>
+                    <Bar dataKey="total" radius={[6,6,0,0]}>
+                      {porMes.map((_,i)=><Cell key={i} fill={i===porMes.length-1?"#3b82f6":"#2d2d4e"}/>)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Pie categorías */}
+              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px" }}>
+                <div style={{ fontWeight:700,marginBottom:16,fontSize:14 }}>🥧 Por categoría</div>
+                <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                  <ResponsiveContainer width="50%" height={200}>
+                    <PieChart>
+                      <Pie data={porCategoria} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={0}>
+                        {porCategoria.map((c,i)=><Cell key={i} fill={c.color}/>)}
+                      </Pie>
+                      <Tooltip formatter={v=>formatMXN(v)}/>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div style={{ flex:1,display:"flex",flexDirection:"column",gap:7 }}>
+                    {porCategoria.map((c,i)=>(
+                      <div key={i} style={{ display:"flex",alignItems:"center",gap:6 }}>
+                        <div style={{ width:9,height:9,borderRadius:"50%",background:c.color,flexShrink:0 }}/>
+                        <span style={{ fontSize:11,color:"#94a3b8",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{c.emoji} {c.name}</span>
+                        <span style={{ fontSize:11,fontWeight:700 }}>{formatMXN(c.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Gráficas row 2 */}
+            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:16 }}>
+              {/* Línea tendencia */}
+              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px" }}>
+                <div style={{ fontWeight:700,marginBottom:16,fontSize:14 }}>📈 Tendencia mensual</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={porMes}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e1e3a"/>
+                    <XAxis dataKey="mes" tick={{fill:"#64748b",fontSize:12}} axisLine={false} tickLine={false}/>
+                    <YAxis tick={{fill:"#64748b",fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>`$${(v/1000).toFixed(0)}k`}/>
+                    <Tooltip content={<CustomTooltip/>}/>
+                    <Line type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={2.5} dot={{fill:"#3b82f6",r:5}} activeDot={{r:7}}/>
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Pie método de pago */}
+              <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:14,padding:"20px" }}>
+                <div style={{ fontWeight:700,marginBottom:16,fontSize:14 }}>💳 Método de pago</div>
+                <ResponsiveContainer width="100%" height={140}>
+                  <PieChart>
+                    <Pie data={porMetodo} cx="50%" cy="50%" outerRadius={60} dataKey="value" strokeWidth={0}>
+                      {porMetodo.map((c,i)=><Cell key={i} fill={c.color}/>)}
+                    </Pie>
+                    <Tooltip formatter={v=>formatMXN(v)}/>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={{ display:"flex",flexDirection:"column",gap:6,marginTop:8 }}>
+                  {porMetodo.map((m,i)=>(
+                    <div key={i} style={{ display:"flex",alignItems:"center",gap:6 }}>
+                      <div style={{ width:9,height:9,borderRadius:"50%",background:m.color,flexShrink:0 }}/>
+                      <span style={{ fontSize:11,color:"#94a3b8",flex:1 }}>{m.name}</span>
+                      <span style={{ fontSize:11,fontWeight:700 }}>{formatMXN(m.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── AGREGAR ── */}
+        {vista==="agregar" && (
+          <div style={{ maxWidth:500,margin:"0 auto" }}>
+            <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:16,padding:"28px" }}>
+              <div style={{ fontWeight:800,fontSize:20,marginBottom:6 }}>➕ Registrar gasto</div>
+              <div style={{ color:"#64748b",fontSize:13,marginBottom:24 }}>Agrega un nuevo gasto a tu registro</div>
+
+              {[
+                { label:"📝 Descripción", key:"descripcion", type:"text",   ph:"Ej: Cena en restaurante" },
+                { label:"💵 Monto (MXN)", key:"monto",       type:"number", ph:"Ej: 850" },
+                { label:"📅 Fecha",       key:"fecha",        type:"date",   ph:"" },
+              ].map(f=>(
+                <div key={f.key} style={{ marginBottom:16 }}>
+                  <label style={{ display:"block",fontSize:13,color:"#94a3b8",marginBottom:6,fontWeight:600 }}>{f.label}</label>
+                  <input type={f.type} placeholder={f.ph} value={form[f.key]}
+                    onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))}
+                    style={{ width:"100%",background:"#0d0d1a",border:"1px solid #2d2d4e",borderRadius:10,padding:"12px 14px",color:"#e2e8f0",fontSize:14,outline:"none",boxSizing:"border-box" }}
+                  />
+                </div>
+              ))}
+
+              {/* Método de pago */}
+              <div style={{ marginBottom:18 }}>
+                <label style={{ display:"block",fontSize:13,color:"#94a3b8",marginBottom:8,fontWeight:600 }}>💳 Método de pago</label>
+                <div style={{ display:"flex",gap:8 }}>
+                  {METODOS.map(m=>{
+                    const cfg={Tarjeta:["#3b82f6","💳"],Efectivo:["#22c55e","💵"],Transferencia:["#a855f7","🔄"]};
+                    const [color,icon]=cfg[m];
+                    const sel=form.metodo===m;
+                    return (
+                      <button key={m} onClick={()=>setForm(p=>({...p,metodo:m}))} style={{
+                        flex:1,background:sel?`${color}33`:"#1a1a2e",
+                        border:`1px solid ${sel?color:"#2d2d4e"}`,borderRadius:10,padding:"10px 4px",cursor:"pointer",
+                        display:"flex",flexDirection:"column",alignItems:"center",gap:4
+                      }}>
+                        <span style={{ fontSize:20 }}>{icon}</span>
+                        <span style={{ fontSize:11,color:sel?color:"#64748b",fontWeight:600 }}>{m}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Categorías */}
+              <div style={{ marginBottom:24 }}>
+                <label style={{ display:"block",fontSize:13,color:"#94a3b8",marginBottom:8,fontWeight:600 }}>🏷️ Categoría</label>
+                <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8 }}>
+                  {CATEGORIAS.map(cat=>{
+                    const sel=form.categoria===cat.nombre;
+                    return (
+                      <button key={cat.nombre} onClick={()=>setForm(p=>({...p,categoria:cat.nombre}))} style={{
+                        background:sel?`${cat.color}33`:"#1a1a2e",
+                        border:`1px solid ${sel?cat.color:"#2d2d4e"}`,borderRadius:10,padding:"10px 4px",cursor:"pointer",
+                        display:"flex",flexDirection:"column",alignItems:"center",gap:4
+                      }}>
+                        <span style={{ fontSize:20 }}>{cat.emoji}</span>
+                        <span style={{ fontSize:10,color:sel?cat.color:"#64748b",fontWeight:600,textAlign:"center" }}>{cat.nombre}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button onClick={agregarGasto} style={{
+                width:"100%",background:"linear-gradient(135deg,#3b82f6,#a855f7)",
+                border:"none",borderRadius:12,padding:"14px",color:"#fff",fontWeight:800,fontSize:16,cursor:"pointer"
+              }}>Guardar Gasto</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── HISTORIAL ── */}
+        {vista==="historial" && (
+          <div>
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:20 }}>
+              <div style={{ fontWeight:800,fontSize:18 }}>📋 Historial de gastos</div>
+              <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+                <span style={{ color:"#64748b",fontSize:13 }}>Mes:</span>
+                <select value={filtroMes} onChange={e=>setFiltroMes(e.target.value)} style={{ background:"#1a1a2e",color:"#e2e8f0",border:"1px solid #2d2d4e",borderRadius:8,padding:"6px 12px",fontSize:13 }}>
+                  <option value="todos">Todos</option>
+                  {MESES.map((m,i)=><option key={i} value={i}>{m}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+              {gastosFiltrados.length===0 && (
+                <div style={{ textAlign:"center",padding:60,color:"#64748b" }}>
+                  <div style={{ fontSize:48,marginBottom:12 }}>🗂️</div>
+                  <div>No hay gastos en este mes</div>
+                </div>
+              )}
+              {gastosFiltrados.map(g=>{
+                const cat=CATEGORIAS.find(c=>c.nombre===g.categoria);
+                return (
+                  <div key={g.id} style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:12,padding:"14px 18px",display:"flex",alignItems:"center",gap:14 }}>
+                    <div style={{ width:44,height:44,borderRadius:12,flexShrink:0,background:`${cat?.color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22 }}>
+                      {cat?.emoji}
+                    </div>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <div style={{ fontWeight:700,fontSize:14 }}>{g.descripcion}</div>
+                      <div style={{ fontSize:12,color:"#64748b",marginTop:3,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
+                        <span>{g.categoria}</span>
+                        <span>·</span>
+                        <span>{new Date(g.fecha+"T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short",year:"numeric"})}</span>
+                        <span>·</span>
+                        <MetodoBadge metodo={g.metodo}/>
+                      </div>
+                    </div>
+                    <div style={{ fontWeight:800,fontSize:16,color:cat?.color }}>{formatMXN(g.monto)}</div>
+                    <button onClick={()=>eliminarGasto(g.id)} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,padding:4,borderRadius:6 }} title="Eliminar">🗑️</button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {gastosFiltrados.length>0 && (
+              <div style={{ marginTop:16,background:"#11112a",border:"1px solid #1e1e3a",borderRadius:12,padding:"14px 18px",display:"flex",justifyContent:"space-between" }}>
+                <span style={{ color:"#64748b",fontWeight:600 }}>Total ({gastosFiltrados.length} gastos)</span>
+                <span style={{ fontWeight:800,fontSize:18,color:"#3b82f6" }}>{formatMXN(total)}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap');
+        * { box-sizing:border-box; }
+        input[type=date]::-webkit-calendar-picker-indicator { filter:invert(.4); }
+        select option { background:#1a1a2e; }
+        ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:#0d0d1a} ::-webkit-scrollbar-thumb{background:#2d2d4e;border-radius:4px}
+      `}</style>
+    </div>
+  );
+}
