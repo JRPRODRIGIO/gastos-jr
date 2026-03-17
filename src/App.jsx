@@ -533,7 +533,8 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap');
         * { box-sizing: border-box; }
         body { margin: 0; background: #0d0d1a; }
-        input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.4); }
+        input[type=date] { padding-top: 10px; padding-bottom: 10px; line-height: normal; }
+        input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.4); cursor: pointer; }
         select option { background: #1a1a2e; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0d0d1a; }
