@@ -92,7 +92,13 @@ export default function App() {
     mostrarToast("✅ Gasto registrado");
   };
 
-  const eliminarGasto = (id) => { setGastos(prev => prev.filter(g => g.id !== id)); mostrarToast("🗑️ Gasto eliminado"); };
+  const [confirmarEliminar, setConfirmarEliminar] = useState(null);
+
+  const eliminarGasto = (id) => {
+    setGastos(prev => prev.filter(g => g.id !== id));
+    setConfirmarEliminar(null);
+    mostrarToast("🗑️ Gasto eliminado");
+  };
 
   const abrirEdicion = (g) => {
     setGastoEditando(g.id);
@@ -225,6 +231,22 @@ export default function App() {
                 flex:2,background:"linear-gradient(135deg,#3b82f6,#a855f7)",
                 border:"none",borderRadius:12,padding:"13px",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer"
               }}>Guardar cambios</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL CONFIRMAR ELIMINAR ── */}
+      {confirmarEliminar && (
+        <div style={{ position:"fixed",inset:0,zIndex:910,background:"rgba(0,0,0,.75)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }} onClick={e=>{ if(e.target===e.currentTarget) setConfirmarEliminar(null); }}>
+          <div style={{ background:"#11112a",border:"1px solid #2d2d4e",borderRadius:18,padding:28,width:"100%",maxWidth:360,textAlign:"center" }}>
+            <div style={{ fontSize:48,marginBottom:12 }}>🗑️</div>
+            <div style={{ fontWeight:800,fontSize:18,marginBottom:8 }}>¿Eliminar gasto?</div>
+            <div style={{ color:"#94a3b8",fontSize:14,marginBottom:6 }}>{confirmarEliminar.descripcion}</div>
+            <div style={{ color:"#64748b",fontSize:13,marginBottom:24 }}>Esta acción no se puede deshacer.</div>
+            <div style={{ display:"flex",gap:10 }}>
+              <button onClick={()=>setConfirmarEliminar(null)} style={{ flex:1,background:"#1a1a2e",border:"1px solid #2d2d4e",borderRadius:12,padding:"13px",color:"#94a3b8",fontWeight:700,fontSize:14,cursor:"pointer" }}>Cancelar</button>
+              <button onClick={()=>eliminarGasto(confirmarEliminar.id)} style={{ flex:1,background:"#ef444422",border:"1px solid #ef4444",borderRadius:12,padding:"13px",color:"#ef4444",fontWeight:800,fontSize:14,cursor:"pointer" }}>Sí, eliminar</button>
             </div>
           </div>
         </div>
@@ -481,7 +503,7 @@ export default function App() {
                     </div>
                     <div style={{ fontWeight:800,fontSize:15,color:cat?.color,flexShrink:0 }}>{formatMXN(g.monto)}</div>
                     <button onClick={()=>abrirEdicion(g)} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,padding:6,borderRadius:6,flexShrink:0 }} title="Editar">✏️</button>
-                    <button onClick={()=>eliminarGasto(g.id)} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,padding:6,borderRadius:6,flexShrink:0 }} title="Eliminar">🗑️</button>
+                    <button onClick={()=>setConfirmarEliminar(g)} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,padding:6,borderRadius:6,flexShrink:0 }} title="Eliminar">🗑️</button>
                   </div>
                 );
               })}
