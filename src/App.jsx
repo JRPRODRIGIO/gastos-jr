@@ -75,6 +75,10 @@ export default function App() {
   const [vista, setVista]     = useState("dashboard");
   const [form, setForm]       = useState({ descripcion:"", monto:"", categoria:"Comida", metodo:"Tarjeta", fecha: new Date().toISOString().split("T")[0] });
   const [filtroMes, setFiltroMes] = useState("todos");
+  const [filtroCategoria, setFiltroCategoria] = useState("todas");
+  const [filtroMetodo, setFiltroMetodo]       = useState("todos");
+  const [filtroMontoMin, setFiltroMontoMin]   = useState("");
+  const [filtroMontoMax, setFiltroMontoMax]   = useState("");
   const [toast, setToast]     = useState(null);
   const [gastoEditando, setGastoEditando] = useState(null);
   const [formEdit, setFormEdit] = useState(null);
@@ -117,6 +121,16 @@ export default function App() {
     filtroMes === "todos" ? gastos : gastos.filter(g => new Date(g.fecha+"T12:00:00").getMonth() === Number(filtroMes)),
     [gastos, filtroMes]
   );
+
+  const gastosHistorialFiltrados = useMemo(() => {
+    return gastosFiltrados.filter(g => {
+      if (filtroCategoria !== "todas" && g.categoria !== filtroCategoria) return false;
+      if (filtroMetodo !== "todos" && g.metodo !== filtroMetodo) return false;
+      if (filtroMontoMin !== "" && g.monto < Number(filtroMontoMin)) return false;
+      if (filtroMontoMax !== "" && g.monto > Number(filtroMontoMax)) return false;
+      return true;
+    });
+  }, [gastosFiltrados, filtroCategoria, filtroMetodo, filtroMontoMin, filtroMontoMax]);
 
   const total = gastosFiltrados.reduce((s,g) => s+g.monto, 0);
 
@@ -466,25 +480,57 @@ export default function App() {
         {/* ── HISTORIAL ── */}
         {vista==="historial" && (
           <div>
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:20 }}>
-              <div style={{ fontWeight:800,fontSize:18 }}>📋 Historial de gastos</div>
-              <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-                <span style={{ color:"#64748b",fontSize:13 }}>Mes:</span>
-                <select value={filtroMes} onChange={e=>setFiltroMes(e.target.value)} style={{ background:"#1a1a2e",color:"#e2e8f0",border:"1px solid #2d2d4e",borderRadius:8,padding:"6px 12px",fontSize:13 }}>
+            <div style={{ fontWeight:800,fontSize:18,marginBottom:14 }}>📋 Historial de gastos</div>
+
+            {/* Filtros */}
+            <div style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:12,padding:"14px 16px",marginBottom:16,display:"flex",flexWrap:"wrap",gap:10,alignItems:"flex-end" }}>
+              <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                <span style={{ color:"#64748b",fontSize:11,fontWeight:600 }}>MES</span>
+                <select value={filtroMes} onChange={e=>setFiltroMes(e.target.value)} style={{ background:"#1a1a2e",color:"#e2e8f0",border:"1px solid #2d2d4e",borderRadius:8,padding:"6px 10px",fontSize:13 }}>
                   <option value="todos">Todos</option>
                   {MESES.map((m,i)=><option key={i} value={i}>{m}</option>)}
                 </select>
               </div>
+              <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                <span style={{ color:"#64748b",fontSize:11,fontWeight:600 }}>CATEGORÍA</span>
+                <select value={filtroCategoria} onChange={e=>setFiltroCategoria(e.target.value)} style={{ background:"#1a1a2e",color:"#e2e8f0",border:"1px solid #2d2d4e",borderRadius:8,padding:"6px 10px",fontSize:13 }}>
+                  <option value="todas">Todas</option>
+                  {CATEGORIAS.map(c=><option key={c.nombre} value={c.nombre}>{c.emoji} {c.nombre}</option>)}
+                </select>
+              </div>
+              <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                <span style={{ color:"#64748b",fontSize:11,fontWeight:600 }}>MÉTODO</span>
+                <select value={filtroMetodo} onChange={e=>setFiltroMetodo(e.target.value)} style={{ background:"#1a1a2e",color:"#e2e8f0",border:"1px solid #2d2d4e",borderRadius:8,padding:"6px 10px",fontSize:13 }}>
+                  <option value="todos">Todos</option>
+                  {METODOS.map(m=><option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                <span style={{ color:"#64748b",fontSize:11,fontWeight:600 }}>MONTO MÍN</span>
+                <input type="number" placeholder="$0" value={filtroMontoMin} onChange={e=>setFiltroMontoMin(e.target.value)}
+                  style={{ background:"#1a1a2e",color:"#e2e8f0",border:"1px solid #2d2d4e",borderRadius:8,padding:"6px 10px",fontSize:13,width:90 }}/>
+              </div>
+              <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                <span style={{ color:"#64748b",fontSize:11,fontWeight:600 }}>MONTO MÁX</span>
+                <input type="number" placeholder="∞" value={filtroMontoMax} onChange={e=>setFiltroMontoMax(e.target.value)}
+                  style={{ background:"#1a1a2e",color:"#e2e8f0",border:"1px solid #2d2d4e",borderRadius:8,padding:"6px 10px",fontSize:13,width:90 }}/>
+              </div>
+              {(filtroCategoria!=="todas"||filtroMetodo!=="todos"||filtroMontoMin!==""||filtroMontoMax!=="") && (
+                <button onClick={()=>{ setFiltroCategoria("todas"); setFiltroMetodo("todos"); setFiltroMontoMin(""); setFiltroMontoMax(""); }}
+                  style={{ background:"#1e1e3a",color:"#94a3b8",border:"1px solid #2d2d4e",borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",marginTop:"auto" }}>
+                  Limpiar filtros
+                </button>
+              )}
             </div>
 
             <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
-              {gastosFiltrados.length===0 && (
+              {gastosHistorialFiltrados.length===0 && (
                 <div style={{ textAlign:"center",padding:60,color:"#64748b" }}>
                   <div style={{ fontSize:48,marginBottom:12 }}>🗂️</div>
-                  <div>No hay gastos en este mes</div>
+                  <div>No hay gastos con estos filtros</div>
                 </div>
               )}
-              {gastosFiltrados.map(g=>{
+              {gastosHistorialFiltrados.map(g=>{
                 const cat=CATEGORIAS.find(c=>c.nombre===g.categoria);
                 return (
                   <div key={g.id} style={{ background:"#11112a",border:"1px solid #1e1e3a",borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:12 }}>
@@ -509,10 +555,10 @@ export default function App() {
               })}
             </div>
 
-            {gastosFiltrados.length>0 && (
+            {gastosHistorialFiltrados.length>0 && (
               <div style={{ marginTop:16,background:"#11112a",border:"1px solid #1e1e3a",borderRadius:12,padding:"14px 18px",display:"flex",justifyContent:"space-between" }}>
-                <span style={{ color:"#64748b",fontWeight:600 }}>Total ({gastosFiltrados.length} gastos)</span>
-                <span style={{ fontWeight:800,fontSize:18,color:"#3b82f6" }}>{formatMXN(total)}</span>
+                <span style={{ color:"#64748b",fontWeight:600 }}>Total ({gastosHistorialFiltrados.length} gastos)</span>
+                <span style={{ fontWeight:800,fontSize:18,color:"#3b82f6" }}>{formatMXN(gastosHistorialFiltrados.reduce((s,g)=>s+g.monto,0))}</span>
               </div>
             )}
           </div>
