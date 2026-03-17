@@ -76,6 +76,8 @@ export default function App() {
   const [form, setForm]       = useState({ descripcion:"", monto:"", categoria:"Comida", metodo:"Tarjeta", fecha: new Date().toISOString().split("T")[0] });
   const [filtroMes, setFiltroMes] = useState("todos");
   const [toast, setToast]     = useState(null);
+  const [gastoEditando, setGastoEditando] = useState(null);
+  const [formEdit, setFormEdit] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(gastos));
@@ -91,6 +93,19 @@ export default function App() {
   };
 
   const eliminarGasto = (id) => { setGastos(prev => prev.filter(g => g.id !== id)); mostrarToast("🗑️ Gasto eliminado"); };
+
+  const abrirEdicion = (g) => {
+    setGastoEditando(g.id);
+    setFormEdit({ descripcion: g.descripcion, monto: String(g.monto), categoria: g.categoria, metodo: g.metodo, fecha: g.fecha });
+  };
+
+  const guardarEdicion = () => {
+    if (!formEdit.descripcion || !formEdit.monto || isNaN(Number(formEdit.monto))) return;
+    setGastos(prev => prev.map(g => g.id === gastoEditando ? { ...g, ...formEdit, monto: Number(formEdit.monto) } : g));
+    setGastoEditando(null);
+    setFormEdit(null);
+    mostrarToast("✅ Gasto actualizado");
+  };
 
   const gastosFiltrados = useMemo(() =>
     filtroMes === "todos" ? gastos : gastos.filter(g => new Date(g.fecha).getMonth() === Number(filtroMes)),
@@ -135,6 +150,83 @@ export default function App() {
       {toast && (
         <div style={{ position:"fixed",top:20,right:20,zIndex:999,background:"#1e1e3a",border:"1px solid #3b3b6b",borderRadius:10,padding:"12px 20px",fontSize:14,boxShadow:"0 8px 32px rgba(0,0,0,.4)" }}>
           {toast}
+        </div>
+      )}
+
+      {/* ── MODAL EDICIÓN ── */}
+      {gastoEditando && formEdit && (
+        <div style={{ position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }} onClick={e=>{ if(e.target===e.currentTarget){ setGastoEditando(null); setFormEdit(null); } }}>
+          <div style={{ background:"#11112a",border:"1px solid #2d2d4e",borderRadius:18,padding:24,width:"100%",maxWidth:480,maxHeight:"90vh",overflowY:"auto" }}>
+            <div style={{ fontWeight:800,fontSize:18,marginBottom:4 }}>✏️ Editar gasto</div>
+            <div style={{ color:"#64748b",fontSize:13,marginBottom:20 }}>Modifica los datos del gasto</div>
+
+            {[
+              { label:"📝 Descripción", key:"descripcion", type:"text",   ph:"Ej: Cena en restaurante" },
+              { label:"💵 Monto (MXN)", key:"monto",       type:"number", ph:"Ej: 850" },
+              { label:"📅 Fecha",       key:"fecha",        type:"date",   ph:"" },
+            ].map(f=>(
+              <div key={f.key} style={{ marginBottom:14 }}>
+                <label style={{ display:"block",fontSize:13,color:"#94a3b8",marginBottom:6,fontWeight:600 }}>{f.label}</label>
+                <input type={f.type} placeholder={f.ph} value={formEdit[f.key]}
+                  onChange={e=>setFormEdit(p=>({...p,[f.key]:e.target.value}))}
+                  style={{ width:"100%",background:"#0d0d1a",border:"1px solid #2d2d4e",borderRadius:10,padding:"12px 14px",color:"#e2e8f0",fontSize:15,outline:"none",boxSizing:"border-box" }}
+                />
+              </div>
+            ))}
+
+            {/* Método de pago */}
+            <div style={{ marginBottom:16 }}>
+              <label style={{ display:"block",fontSize:13,color:"#94a3b8",marginBottom:8,fontWeight:600 }}>💳 Método de pago</label>
+              <div style={{ display:"flex",gap:8 }}>
+                {METODOS.map(m=>{
+                  const cfg={Tarjeta:["#3b82f6","💳"],Efectivo:["#22c55e","💵"],Transferencia:["#a855f7","🔄"]};
+                  const [color,icon]=cfg[m];
+                  const sel=formEdit.metodo===m;
+                  return (
+                    <button key={m} onClick={()=>setFormEdit(p=>({...p,metodo:m}))} style={{
+                      flex:1,background:sel?`${color}33`:"#1a1a2e",
+                      border:`1px solid ${sel?color:"#2d2d4e"}`,borderRadius:10,padding:"10px 4px",cursor:"pointer",
+                      display:"flex",flexDirection:"column",alignItems:"center",gap:4,minHeight:56
+                    }}>
+                      <span style={{ fontSize:20 }}>{icon}</span>
+                      <span style={{ fontSize:11,color:sel?color:"#64748b",fontWeight:600 }}>{m}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Categorías */}
+            <div style={{ marginBottom:20 }}>
+              <label style={{ display:"block",fontSize:13,color:"#94a3b8",marginBottom:8,fontWeight:600 }}>🏷️ Categoría</label>
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8 }}>
+                {CATEGORIAS.map(cat=>{
+                  const sel=formEdit.categoria===cat.nombre;
+                  return (
+                    <button key={cat.nombre} onClick={()=>setFormEdit(p=>({...p,categoria:cat.nombre}))} style={{
+                      background:sel?`${cat.color}33`:"#1a1a2e",
+                      border:`1px solid ${sel?cat.color:"#2d2d4e"}`,borderRadius:10,padding:"8px 4px",cursor:"pointer",
+                      display:"flex",flexDirection:"column",alignItems:"center",gap:3,minHeight:54
+                    }}>
+                      <span style={{ fontSize:18 }}>{cat.emoji}</span>
+                      <span style={{ fontSize:10,color:sel?cat.color:"#64748b",fontWeight:600,textAlign:"center",lineHeight:1.2 }}>{cat.nombre}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display:"flex",gap:10 }}>
+              <button onClick={()=>{ setGastoEditando(null); setFormEdit(null); }} style={{
+                flex:1,background:"#1a1a2e",border:"1px solid #2d2d4e",borderRadius:12,padding:"13px",
+                color:"#94a3b8",fontWeight:700,fontSize:14,cursor:"pointer"
+              }}>Cancelar</button>
+              <button onClick={guardarEdicion} style={{
+                flex:2,background:"linear-gradient(135deg,#3b82f6,#a855f7)",
+                border:"none",borderRadius:12,padding:"13px",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer"
+              }}>Guardar cambios</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -388,6 +480,7 @@ export default function App() {
                       </div>
                     </div>
                     <div style={{ fontWeight:800,fontSize:15,color:cat?.color,flexShrink:0 }}>{formatMXN(g.monto)}</div>
+                    <button onClick={()=>abrirEdicion(g)} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,padding:6,borderRadius:6,flexShrink:0 }} title="Editar">✏️</button>
                     <button onClick={()=>eliminarGasto(g.id)} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,padding:6,borderRadius:6,flexShrink:0 }} title="Eliminar">🗑️</button>
                   </div>
                 );
