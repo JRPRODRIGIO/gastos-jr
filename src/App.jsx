@@ -114,7 +114,7 @@ export default function App() {
   };
 
   const gastosFiltrados = useMemo(() =>
-    filtroMes === "todos" ? gastos : gastos.filter(g => new Date(g.fecha).getMonth() === Number(filtroMes)),
+    filtroMes === "todos" ? gastos : gastos.filter(g => new Date(g.fecha+"T12:00:00").getMonth() === Number(filtroMes)),
     [gastos, filtroMes]
   );
 
@@ -122,7 +122,7 @@ export default function App() {
 
   const porMes = useMemo(() => {
     const mapa = {};
-    gastos.forEach(g => { const m = new Date(g.fecha).getMonth(); mapa[m] = (mapa[m]||0)+g.monto; });
+    gastos.forEach(g => { const m = new Date(g.fecha+"T12:00:00").getMonth(); mapa[m] = (mapa[m]||0)+g.monto; });
     return Object.entries(mapa).sort((a,b)=>a[0]-b[0]).map(([m,t])=>({ mes:MESES[m], total:t }));
   }, [gastos]);
 
